@@ -3,11 +3,12 @@ var fs = require('fs');
 var spawn = require('child_process').spawn;
 var color = require('cli-color');
 var semver = require('semver')
+var p = require('path')
 var cyan = color.cyan;
 var yellow = color.yellow;
 
 module.exports = function(finish){
-  var oldVersion = require('./package.json').version
+  var oldVersion = readJSON('package.json').version
   var names = ['major', 'minor', 'patch']
     , tagName, tagged, committed, pushed, cleaning;
 
