@@ -2,9 +2,9 @@
   "name": "rf-release",
   "version": "0.4.0",
   "description": "tag, push, and publish to npm and bower",
-  "main": "./bin/release",
+  "main": "./index.js",
   "bin": {
-    "release": "./bin/release"
+    "release": "./bin/rf-release"
   },
   "scripts": {
     "test": "node test.js"
@@ -23,8 +23,8 @@
   },
   "homepage": "https://github.com/rpflorence/rf-release",
   "dependencies": {
-    "prompt": "0.2.11",
     "cli-color": "0.2.3",
-    "rf-changelog": "0.4.0"
+    "prompt": "0.2.11",
+    "semver": "^4.3.3"
   }
 }

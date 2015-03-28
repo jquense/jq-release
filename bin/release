@@ -1,9 +1,0 @@
-#!/usr/bin/env node
-var release = require('../index');
-
-release(function(err){
-  if ( err ) throw err
-  process.on('exit', function(){
-     process.exit(err ? 1 : 0);
-  });
-})

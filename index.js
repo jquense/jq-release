@@ -2,18 +2,31 @@ var prompt = require('prompt');
 var fs = require('fs');
 var spawn = require('child_process').spawn;
 var color = require('cli-color');
+var semver = require('semver')
 var cyan = color.cyan;
 var yellow = color.yellow;
 
 module.exports = function(finish){
   var oldVersion = require('./package.json').version
+  var names = ['major', 'minor', 'patch']
+    , tagName, tagged, committed, pushed, cleaning;
+
+  tagged = committed = false;
+
   var schema = {
     properties: {
       version: {
         description: 'version? (old is '+ oldVersion +')',
-        pattern: /^[0-9]\.[0-9]+\.[0-9](-.+)?/,
+        conform: function(value){
+          return names.indexOf(value) > -1 || semver.valid(value)
+        },
         message: 'Must be a valid semver string i.e. 1.0.2, 2.3.0-beta.1',
-        required: true
+        required: true,
+        before: function(value){
+          return names.indexOf(value) > -1 
+            ? semver.inc(oldVersion, value)
+            : value
+        }
       }
     }
   };
@@ -36,18 +49,27 @@ module.exports = function(finish){
         });
       });
     });
+
   });
 
   function commit(version, cb) {
-    run('git add -A && git commit -m "release ' + version + '"', cb);
+    run('git add -A && git commit -m "release ' + version + '"', function(){
+      committed = true; cb()
+    });
   }
 
   function tag(version, cb) {
-    run('git tag -am ' + version + ' v' + version, cb);
+    tagName = 'v' + version;
+
+    run('git tag -am ' + version + ' ' + tagName, function(){
+      tagged = true; 
+      cb()
+    });
   }
 
   function publish(version, cb) {
     run('git push origin master --follow-tags', function() {
+      pushed = true
       run('npm publish', cb);
     });
   }
@@ -57,13 +79,35 @@ module.exports = function(finish){
 
     spawnCmd(command, function(err) {
       if (err) {
-        updateJSON('package', oldVersion)
-        updateJSON('bower', oldVersion)
-        return finish(err)
+        return cleanUp(function(){ finish(err) })
       }
 
       cb();
     });
+  }
+
+  function cleanUp(cb){
+    if (cleaning) return;
+    cleaning = true;
+
+    var working = 1 + tagged + committed;
+
+    if ( pushed ){
+      log('An error occured after the tag and commit were pushed to origin, ' +
+        'because teh code is not in a public space, no actions were taken to roll back on error ' + 
+        'to undo the work, you will need to manually delete the tag, commit, and version bump in the manifest files')
+      return cb();
+    }
+    updateJSON('package', oldVersion)
+    updateJSON('bower', oldVersion)
+
+    committed && spawnCmd('git reset HEAD~1 --soft ', tryDone)
+    tagged && spawnCmd('git tag -d ' + tagName, tryDone)
+    
+    tryDone()
+    function tryDone(){ 
+      if (--working <= 0) cb() 
+    } 
   }
 }
 
